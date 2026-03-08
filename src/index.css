@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Elvish Parchment Light Theme */
+    --background: 40 30% 95%;
+    --foreground: 30 20% 15%;
+
+    --card: 38 35% 92%;
+    --card-foreground: 30 20% 15%;
+
+    --popover: 38 35% 92%;
+    --popover-foreground: 30 20% 15%;
+
+    --primary: 43 60% 38%;
+    --primary-foreground: 40 30% 95%;
+
+    --secondary: 150 20% 88%;
+    --secondary-foreground: 150 30% 20%;
+
+    --muted: 35 20% 88%;
+    --muted-foreground: 30 10% 45%;
+
+    --accent: 150 25% 85%;
+    --accent-foreground: 150 35% 18%;
+
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 40 30% 95%;
+
+    --border: 35 25% 82%;
+    --input: 35 25% 82%;
+    --ring: 43 60% 38%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 30 25% 90%;
+    --sidebar-foreground: 30 20% 15%;
+    --sidebar-primary: 43 60% 38%;
+    --sidebar-primary-foreground: 40 30% 95%;
+    --sidebar-accent: 150 20% 85%;
+    --sidebar-accent-foreground: 150 35% 18%;
+    --sidebar-border: 35 25% 80%;
+    --sidebar-ring: 43 60% 38%;
+
+    /* Custom Elvish tokens */
+    --elvish-gold: 43 60% 38%;
+    --elvish-gold-light: 43 55% 55%;
+    --elvish-green: 150 30% 28%;
+    --elvish-green-light: 150 25% 85%;
+    --elvish-parchment: 40 30% 95%;
+    --elvish-bark: 30 20% 15%;
+    --elvish-glow: 43 80% 60%;
+    --elvish-deep: 145 25% 14%;
+  }
+
+  .dark {
+    /* Elvish Midnight Forest Dark Theme */
+    --background: 145 25% 14%;
+    --foreground: 40 25% 88%;
+
+    --card: 145 22% 17%;
+    --card-foreground: 40 25% 88%;
+
+    --popover: 145 22% 17%;
+    --popover-foreground: 40 25% 88%;
+
+    --primary: 43 65% 50%;
+    --primary-foreground: 145 25% 14%;
+
+    --secondary: 150 15% 22%;
+    --secondary-foreground: 150 20% 75%;
+
+    --muted: 145 15% 20%;
+    --muted-foreground: 40 15% 55%;
+
+    --accent: 150 20% 20%;
+    --accent-foreground: 150 25% 75%;
+
+    --destructive: 0 55% 40%;
+    --destructive-foreground: 40 25% 88%;
+
+    --border: 145 15% 22%;
+    --input: 145 15% 22%;
+    --ring: 43 65% 50%;
+
+    --sidebar-background: 145 22% 12%;
+    --sidebar-foreground: 40 25% 85%;
+    --sidebar-primary: 43 65% 50%;
+    --sidebar-primary-foreground: 145 25% 14%;
+    --sidebar-accent: 150 15% 18%;
+    --sidebar-accent-foreground: 150 20% 75%;
+    --sidebar-border: 145 15% 20%;
+    --sidebar-ring: 43 65% 50%;
+
+    --elvish-gold: 43 65% 50%;
+    --elvish-gold-light: 43 60% 65%;
+    --elvish-green: 150 25% 35%;
+    --elvish-green-light: 150 15% 22%;
+    --elvish-parchment: 40 25% 88%;
+    --elvish-bark: 145 25% 14%;
+    --elvish-glow: 43 85% 65%;
+    --elvish-deep: 145 25% 10%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Crimson Text', Georgia, serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer utilities {
+  .elvish-glow {
+    box-shadow: 0 0 20px hsl(43 80% 60% / 0.15), 0 0 40px hsl(43 80% 60% / 0.05);
+  }
+
+  .elvish-glow-strong {
+    box-shadow: 0 0 30px hsl(43 80% 60% / 0.25), 0 0 60px hsl(43 80% 60% / 0.1), 0 0 100px hsl(43 80% 60% / 0.05);
+  }
+
+  .elvish-border {
+    border-image: linear-gradient(
+      180deg,
+      hsl(43 60% 38% / 0.4),
+      hsl(43 60% 38% / 0.1),
+      hsl(43 60% 38% / 0.4)
+    ) 1;
+  }
+
+  .elvish-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(145 25% 14%) 0%,
+      hsl(150 22% 18%) 50%,
+      hsl(145 25% 14%) 100%
+    );
+  }
+
+  .elvish-gradient-deep {
+    background: linear-gradient(
+      180deg,
+      hsl(145 25% 12%) 0%,
+      hsl(145 25% 16%) 40%,
+      hsl(145 25% 12%) 100%
+    );
+  }
+
+  .parchment-texture {
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, hsl(43 60% 38% / 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, hsl(150 30% 28% / 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, hsl(43 60% 38% / 0.02) 0%, transparent 50%);
+  }
+
+  .elvish-ornament-bg {
+    background-image:
+      radial-gradient(ellipse at 10% 20%, hsl(43 60% 38% / 0.05) 0%, transparent 40%),
+      radial-gradient(ellipse at 90% 80%, hsl(43 60% 38% / 0.05) 0%, transparent 40%),
+      radial-gradient(ellipse at 50% 50%, hsl(150 25% 30% / 0.03) 0%, transparent 60%);
+  }
+
+  .elvish-text-glow {
+    text-shadow: 0 0 20px hsl(43 65% 50% / 0.3), 0 0 40px hsl(43 65% 50% / 0.1);
+  }
+
+  .elvish-card {
+    @apply border border-primary/15 rounded-lg;
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.8) 100%);
+    box-shadow: 0 4px 20px hsl(43 60% 38% / 0.08), inset 0 1px 0 hsl(43 60% 38% / 0.1);
+  }
+
+  .elvish-section-border {
+    border-top: 1px solid hsl(var(--primary) / 0.15);
+    border-bottom: 1px solid hsl(var(--primary) / 0.15);
+  }
+}
