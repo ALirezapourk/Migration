@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,6 @@ import { ElvishCornerOrnament } from "@/components/ElvishCornerOrnament";
 export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signUp, signIn } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const [signupEmail, setSignupEmail] = useState("");
@@ -30,28 +29,34 @@ export default function Auth() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      await signUp(signupEmail, signupPassword, signupName, signupRole as "candidate" | "recruiter");
-      toast({ title: "Account created!", description: "Welcome to Elvish Talents." });
-      navigate("/dashboard");
-    } catch (error: any) {
+    const { error } = await supabase.auth.signUp({
+      email: signupEmail,
+      password: signupPassword,
+      options: {
+        data: { display_name: signupName, role: signupRole },
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    setLoading(false);
+    if (error) {
       toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
+    } else {
+      toast({ title: "Check your email", description: "We sent you a confirmation link." });
     }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      await signIn(loginEmail, loginPassword);
-      toast({ title: "Welcome back!" });
-      navigate("/dashboard");
-    } catch (error: any) {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    });
+    setLoading(false);
+    if (error) {
       toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
+    } else {
+      navigate("/dashboard");
     }
   };
 

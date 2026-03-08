@@ -13,16 +13,16 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { session, loading } = useAuth();
   if (loading) return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!session) return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { session, loading } = useAuth();
   if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (session) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
