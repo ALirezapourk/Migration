@@ -1,12 +1,12 @@
 // functions/src/parse-cv.ts
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
-const geminiApiKey = defineSecret("GEMINI_API_KEY");
+const openaiApiKey = defineSecret("OPENAI_API_KEY");
 
 export const parseCv = onRequest(
-  { cors: true, secrets: [geminiApiKey] },
+  { cors: true, secrets: [openaiApiKey] },
   async (req, res) => {
     try {
       const { cvText, fileName } = req.body;
@@ -16,8 +16,7 @@ export const parseCv = onRequest(
         return;
       }
 
-      const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
       const systemPrompt = `You are an expert CV/resume parser. Extract structured data from the CV text provided. Return a JSON object with these exact fields:
 - name (string): full name
@@ -33,12 +32,15 @@ export const parseCv = onRequest(
 
 Return ONLY valid JSON, no markdown fences.`;
 
-      const result = await model.generateContent([
-        systemPrompt,
-        `Parse this CV (file: ${fileName}):\n\n${cvText.slice(0, 15000)}`,
-      ]);
+      const response = await openai.responses.create({
+        model: "gpt-5-nano",
+        input: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Parse this CV (file: ${fileName}):\n\n${cvText.slice(0, 15000)}` },
+        ],
+      });
 
-      const content = result.response.text();
+      const content = response.output_text;
       const cleaned = content
         .replace(/```json\s*/g, "")
         .replace(/```\s*/g, "")

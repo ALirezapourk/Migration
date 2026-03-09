@@ -50,13 +50,12 @@ export async function searchCandidates(
  * Call the Cloud Function URL directly (v2 functions are HTTP endpoints).
  */
 async function callFunction(name: string, body: any): Promise<any> {
-  // For Cloud Functions v2, the URL pattern is:
-  // https://{function-name}-{project-id}.{region}.run.app
-  // OR you can use the Firebase Functions SDK:
+  // Cloud Functions v2 URL pattern:
+  // https://{region}-{project-id}.cloudfunctions.net/{function-name}
   const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-  const region = "us-central1"; // or your chosen region
+  const region = "us-central1";
 
-  const url = `https://${name}-${projectId}.${region}.run.app`;
+  const url = `https://${region}-${projectId}.cloudfunctions.net/${name}`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -82,7 +81,7 @@ export async function matchCandidatesAI(
   requirements: RecruiterRequirements
 ): Promise<ApiResponse<MatchResponse>> {
   try {
-    const data = await callFunction("matchcandidates", {
+    const data = await callFunction("matchCandidates", {
       candidates: candidateList,
       requirements,
     });
@@ -104,7 +103,7 @@ export async function matchCompaniesForCandidate(
   candidate: Candidate
 ): Promise<ApiResponse<MatchResponse>> {
   try {
-    const data = await callFunction("matchcompanies", {
+    const data = await callFunction("matchCompanies", {
       companies,
       candidate,
       direction: "companies-for-candidate",
@@ -127,7 +126,7 @@ export async function matchCandidatesForCompany(
   candidateList: Candidate[]
 ): Promise<ApiResponse<MatchResponse>> {
   try {
-    const data = await callFunction("matchcompanies", {
+    const data = await callFunction("matchCompanies", {
       companies: [company],
       candidate: candidateList,
       direction: "candidates-for-company",

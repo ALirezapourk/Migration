@@ -1,18 +1,17 @@
 // functions/src/match-candidates.ts
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
-const geminiApiKey = defineSecret("GEMINI_API_KEY");
+const openaiApiKey = defineSecret("OPENAI_API_KEY");
 
 export const matchCandidates = onRequest(
-  { cors: true, secrets: [geminiApiKey] },
+  { cors: true, secrets: [openaiApiKey] },
   async (req, res) => {
     try {
       const { candidates, requirements } = req.body;
 
-      const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
       const candidateSummaries = candidates
         .map(
@@ -47,8 +46,15 @@ ${candidateSummaries}
 
 Return a JSON array sorted by score descending with objects: { "id": string, "score": number, "summary": string }`;
 
-      const result = await model.generateContent([systemPrompt, userPrompt]);
-      const content = result.response.text();
+      const response = await openai.responses.create({
+        model: "gpt-5-nano",
+        input: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      const content = response.output_text;
 
       let results;
       try {

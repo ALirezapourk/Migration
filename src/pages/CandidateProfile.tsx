@@ -12,8 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { httpsCallable } from "firebase/functions";
-import { storage, functions } from "@/lib/firebase";
+import { storage } from "@/lib/firebase";
 import { insertCandidate } from "@/lib/firestore";
 import { ElvishHeader } from "@/components/ElvishHeader";
 import { ElvishDivider } from "@/components/ElvishDivider";
@@ -54,9 +53,17 @@ export default function CandidateProfile() {
     setParsing(true);
     try {
       const text = await file.text();
-      const parseCVFn = httpsCallable(functions, "parseCV");
-      const result = await parseCVFn({ cvText: text, fileName: file.name });
-      const data = result.data as any;
+      const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+      const res = await fetch(
+        `https://us-central1-${projectId}.cloudfunctions.net/parseCv`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cvText: text, fileName: file.name }),
+        }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
       const ex = data.extracted;
       if (ex) {
         setName(ex.name || "");
