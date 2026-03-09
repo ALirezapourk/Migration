@@ -11,7 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { httpsCallable } from "firebase/functions";
+import { storage, functions } from "@/lib/firebase";
+import { insertCandidate } from "@/lib/firestore";
 import { ElvishHeader } from "@/components/ElvishHeader";
 import { ElvishDivider } from "@/components/ElvishDivider";
 
@@ -51,10 +54,9 @@ export default function CandidateProfile() {
     setParsing(true);
     try {
       const text = await file.text();
-      const { data, error } = await supabase.functions.invoke("parse-cv", {
-        body: { cvText: text, fileName: file.name },
-      });
-      if (error) throw error;
+      const parseCVFn = httpsCallable(functions, "parseCV");
+      const result = await parseCVFn({ cvText: text, fileName: file.name });
+      const data = result.data as any;
       const ex = data.extracted;
       if (ex) {
         setName(ex.name || "");
@@ -95,20 +97,18 @@ export default function CandidateProfile() {
     try {
       let cvPath: string | null = null;
       if (file) {
-        const ext = file.name.split(".").pop();
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from("cv-uploads").upload(path, file);
-        if (uploadError) throw uploadError;
-        cvPath = path;
+        const storageRef = ref(storage, `cv-uploads/${user.uid}/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        cvPath = snapshot.ref.fullPath;
       }
-      const { error } = await supabase.from("candidates").insert({
-        user_id: user.id,
+      await insertCandidate({
+        user_id: user.uid,
+        uploaded_by: user.uid,
         name, title, skills, experience, location,
         work_preference: workPreference,
         availability, work_type: workType, domain, summary,
         cv_file_path: cvPath, is_draft: false,
       });
-      if (error) throw error;
       toast({ title: "Profile Published!", description: "Your profile is now visible to recruiters." });
       navigate("/");
     } catch (e) {

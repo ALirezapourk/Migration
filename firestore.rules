@@ -2,8 +2,49 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    // Helper: check user role
+    function hasRole(role) {
+      return get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == role;
+    }
+
+    // Profiles
+    match /profiles/{userId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == userId || hasRole('recruiter')
+      );
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // User Roles
+    match /user_roles/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // No update/delete allowed
+    }
+
+    // Candidates
+    match /candidates/{candidateId} {
+      // Candidates can CRUD their own data
+      allow read: if request.auth != null && (
+        resource.data.user_id == request.auth.uid || hasRole('recruiter')
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.user_id == request.auth.uid || hasRole('recruiter')
+      );
+      allow update: if request.auth != null &&
+        resource.data.user_id == request.auth.uid;
+      allow delete: if request.auth != null &&
+        resource.data.user_id == request.auth.uid;
+    }
+
+    // Companies
+    match /companies/{companyId} {
+      allow read: if request.auth != null && (
+        hasRole('recruiter') || hasRole('candidate')
+      );
+      allow create, update, delete: if request.auth != null && hasRole('recruiter');
     }
   }
 }

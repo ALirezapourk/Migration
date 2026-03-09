@@ -22,7 +22,7 @@ import { ElvishHeader } from "@/components/ElvishHeader";
 import { ElvishDivider } from "@/components/ElvishDivider";
 import { scoreCandidates } from "@/lib/scoring";
 import { matchCandidatesAI, matchCompaniesForCandidate, matchCandidatesForCompany } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchCandidates, fetchCompanies } from "@/lib/firestore";
 import {
   Candidate,
   Company,
@@ -59,49 +59,16 @@ const Index = () => {
     const fetchData = async () => {
       setDbLoading(true);
 
-      const [candidatesRes, companiesRes] = await Promise.all([
-        supabase.from("candidates").select("*").eq("is_draft", false),
-        supabase.from("companies").select("*"),
-      ]);
+      try {
+        const [candidateList, companyList] = await Promise.all([
+          fetchCandidates(true),
+          fetchCompanies(),
+        ]);
 
-      if (candidatesRes.error) console.error("Failed to load candidates:", candidatesRes.error);
-      if (companiesRes.error) console.error("Failed to load companies:", companiesRes.error);
-
-      if (candidatesRes.data) {
-        const mapped: Candidate[] = candidatesRes.data.map((row: any) => ({
-          id: row.id,
-          name: row.name,
-          title: row.title,
-          skills: row.skills || [],
-          experience: row.experience,
-          location: row.location,
-          workPreference: row.work_preference,
-          availability: row.availability,
-          workType: row.work_type,
-          domain: row.domain,
-          summary: row.summary,
-        }));
-        setDbCandidates(mapped);
-      }
-
-      if (companiesRes.data) {
-        const mapped: Company[] = companiesRes.data.map((row: any) => ({
-          id: row.id,
-          name: row.name,
-          industry: row.industry,
-          description: row.description,
-          location: row.location,
-          size: row.size,
-          requiredSkills: row.required_skills || [],
-          minExperience: row.min_experience,
-          workPreference: row.work_preference,
-          workType: row.work_type,
-          domain: row.domain,
-          budgetRange: row.budget_range,
-          openPositions: row.open_positions,
-          notes: row.notes,
-        }));
-        setDbCompanies(mapped);
+        setDbCandidates(candidateList);
+        setDbCompanies(companyList);
+      } catch (error) {
+        console.error("Failed to load data:", error);
       }
 
       setDbLoading(false);

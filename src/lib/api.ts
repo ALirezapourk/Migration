@@ -1,4 +1,6 @@
-import { candidates } from "./candidates";
+// src/lib/api.ts
+import { httpsCallable } from "firebase/functions";
+import { functions } from "./firebase";
 import {
   ApiResponse,
   Candidate,
@@ -7,21 +9,18 @@ import {
   RecruiterRequirements,
   SearchFilters,
 } from "./types";
-
-// Placeholder: point this at your .NET backend when ready
-const BASE_URL = "/api";
+import { fetchCandidates as fetchCandidatesFromDB } from "./firestore";
 
 /**
- * Search candidates with filters.
- * Currently returns mock data filtered locally.
+ * Search candidates with filters (local filtering).
  */
 export async function searchCandidates(
   filters: SearchFilters
 ): Promise<ApiResponse<Candidate[]>> {
-  let filtered = [...candidates];
+  let candidates = await fetchCandidatesFromDB(true);
 
   if (filters.skills && filters.skills.length > 0) {
-    filtered = filtered.filter((c) =>
+    candidates = candidates.filter((c) =>
       filters.skills!.some((skill) =>
         c.skills.some(
           (cs) =>
@@ -33,65 +32,60 @@ export async function searchCandidates(
   }
 
   if (filters.minExperience && filters.minExperience > 0) {
-    filtered = filtered.filter((c) => c.experience >= filters.minExperience!);
+    candidates = candidates.filter((c) => c.experience >= filters.minExperience!);
   }
 
   if (filters.workPreference && filters.workPreference !== "Any") {
-    filtered = filtered.filter(
-      (c) => c.workPreference === filters.workPreference
-    );
+    candidates = candidates.filter((c) => c.workPreference === filters.workPreference);
   }
 
   if (filters.workType && filters.workType !== "Any") {
-    filtered = filtered.filter((c) => c.workType === filters.workType);
+    candidates = candidates.filter((c) => c.workType === filters.workType);
   }
 
-  return { data: filtered, success: true };
+  return { data: candidates, success: true };
 }
 
 /**
- * Run AI matching via edge function — candidates against recruiter requirements.
+ * Call the Cloud Function URL directly (v2 functions are HTTP endpoints).
+ */
+async function callFunction(name: string, body: any): Promise<any> {
+  // For Cloud Functions v2, the URL pattern is:
+  // https://{function-name}-{project-id}.{region}.run.app
+  // OR you can use the Firebase Functions SDK:
+  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+  const region = "us-central1"; // or your chosen region
+
+  const url = `https://${name}-${projectId}.${region}.run.app`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (res.status === 429) throw new Error("Rate limit exceeded. Please wait and try again.");
+  if (res.status === 402) throw new Error("AI credits exhausted.");
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Function call failed: ${text}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * AI matching: candidates against recruiter requirements.
  */
 export async function matchCandidatesAI(
   candidateList: Candidate[],
   requirements: RecruiterRequirements
 ): Promise<ApiResponse<MatchResponse>> {
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return {
-        data: { results: [] },
-        success: false,
-        error: "Backend not configured. Connect to Cloud to enable AI matching.",
-      };
-    }
-
-    const res = await fetch(
-      `${supabaseUrl}/functions/v1/match-candidates`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ candidates: candidateList, requirements }),
-      }
-    );
-
-    if (res.status === 429) {
-      return { data: { results: [] }, success: false, error: "Rate limit exceeded. Please wait a moment and try again." };
-    }
-    if (res.status === 402) {
-      return { data: { results: [] }, success: false, error: "AI credits exhausted. Please top up your workspace credits." };
-    }
-    if (!res.ok) {
-      const text = await res.text();
-      return { data: { results: [] }, success: false, error: `AI matching failed: ${text}` };
-    }
-
-    const data = await res.json();
+    const data = await callFunction("matchcandidates", {
+      candidates: candidateList,
+      requirements,
+    });
     return { data: { results: data.results }, success: true };
   } catch (e) {
     return {
@@ -103,83 +97,47 @@ export async function matchCandidatesAI(
 }
 
 /**
- * Match companies to a candidate (find best companies for a candidate).
+ * Match companies to a candidate.
  */
 export async function matchCompaniesForCandidate(
   companies: Company[],
   candidate: Candidate
 ): Promise<ApiResponse<MatchResponse>> {
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return { data: { results: [] }, success: false, error: "Backend not configured." };
-    }
-
-    const res = await fetch(
-      `${supabaseUrl}/functions/v1/match-companies`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ companies, candidate, direction: "companies-for-candidate" }),
-      }
-    );
-
-    if (res.status === 429) return { data: { results: [] }, success: false, error: "Rate limit exceeded." };
-    if (res.status === 402) return { data: { results: [] }, success: false, error: "AI credits exhausted." };
-    if (!res.ok) {
-      const text = await res.text();
-      return { data: { results: [] }, success: false, error: `Matching failed: ${text}` };
-    }
-
-    const data = await res.json();
+    const data = await callFunction("matchcompanies", {
+      companies,
+      candidate,
+      direction: "companies-for-candidate",
+    });
     return { data: { results: data.results }, success: true };
   } catch (e) {
-    return { data: { results: [] }, success: false, error: e instanceof Error ? e.message : "Unknown error" };
+    return {
+      data: { results: [] },
+      success: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
   }
 }
 
 /**
- * Match candidates to a specific company (find best candidates for a company).
+ * Match candidates to a company.
  */
 export async function matchCandidatesForCompany(
   company: Company,
   candidateList: Candidate[]
 ): Promise<ApiResponse<MatchResponse>> {
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return { data: { results: [] }, success: false, error: "Backend not configured." };
-    }
-
-    const res = await fetch(
-      `${supabaseUrl}/functions/v1/match-companies`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ companies: [company], candidate: candidateList, direction: "candidates-for-company" }),
-      }
-    );
-
-    if (res.status === 429) return { data: { results: [] }, success: false, error: "Rate limit exceeded." };
-    if (res.status === 402) return { data: { results: [] }, success: false, error: "AI credits exhausted." };
-    if (!res.ok) {
-      const text = await res.text();
-      return { data: { results: [] }, success: false, error: `Matching failed: ${text}` };
-    }
-
-    const data = await res.json();
+    const data = await callFunction("matchcompanies", {
+      companies: [company],
+      candidate: candidateList,
+      direction: "candidates-for-company",
+    });
     return { data: { results: data.results }, success: true };
   } catch (e) {
-    return { data: { results: [] }, success: false, error: e instanceof Error ? e.message : "Unknown error" };
+    return {
+      data: { results: [] },
+      success: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
   }
 }
